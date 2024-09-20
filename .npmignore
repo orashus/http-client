@@ -1,0 +1,15 @@
+node_modules/
+src/
+*lock*
+
+tsconfig.json
+tsup.config.ts
+
+.DS_Store
+
+# markdown
+PERSONAL_NOTES.md
+MAN.md
+
+# assets
+assets/

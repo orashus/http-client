@@ -1,8 +1,10 @@
-interface Client {
-  hello: string
+interface Headers {
+  [key: string]: string;
 }
 
+type HttpMethods = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type {
-  Client,
+  Headers,
+  HttpMethods,
 };

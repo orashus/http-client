@@ -1,196 +1,242 @@
-// import { createDefaultHeaders } from "./headers";
-import type { Headers, HttpMethods } from "./types";
+import type { Headers, HttpMethods } from "./types/types.d";
+import {
+  isValidUrl,
+  isEmptyObject,
+  mountBothBeforeRequestHeaders
+} from "./utils/utils";
 
 /**
- * @class Creates an http_Client 🥷🏽
- * @since April 15 2024 | 19:13 hr
- *
- * @author RashJrEdmund
- *
+ * @author RashJrEdmund 🥷🏽
+ * @param {Object?} options
+ * @param {string?} options.api_base_url optional url to act as origin for all requests of the HTTP_CLIENT instance
+ * @param {HeadersInit} options.api_base_headers optionally set"s default headers
+ * @param {(() => HeadersInit) | undefined} options.base_before_req_headers before each request, the header object returned by this function is set as a header, giving a more dynamic experience than that of the __base_header__ options
+ * 
+ * @returns HTTP_CLIENT instance
+ * 
+ * for a more details documentation, @see https://www.npmjs.com/package/@orashus/http-client
  */
-export class HTTP_CLIENT {
-  private _headers;
-  private _base_url;
-  private _base_path; // e.g /auth
+function HttpClientProvider({
+  api_base_url = "",
+  api_base_headers = {},
+  base_before_req_headers,
+}: {
+  api_base_url?: string,
+  api_base_headers?: HeadersInit
+  base_before_req_headers?: () => HeadersInit;
+} = {}) {
+  if (api_base_url && !isValidUrl(api_base_url))
+    throw new Error("Invalid API Base URL Specified")
 
-  /**
-   * @constructor creates an instance of HTTP_CLIENT 👷🏾‍♂️ 🛠️ 🚧
-   * @param {Object} options;
-   * @param {string} options.base_url optional url to act as origin for all requests of an HTTP_CLIENT instance
-   * @param {HeadersInit} options.base_headers optionally set"s default headers
-   */
-  constructor({ base_url = "", base_headers = {} }: { base_url?: string, base_headers?: HeadersInit }) {
-    if (!["undefined", "string"].includes(typeof base_url))
-      throw new Error("Invalid Base URL Specified"); // meaning something of type type "object" or "function" or something else was passed
+  // This closure is intentional as it avoids exposing some variables to the user
+  return (() => {
+    let _req_url: string = "";
+    let _req_headers: HeadersInit = {};
+    let _before_req_headers: (() => HeadersInit) | undefined;
 
-    if (base_url.trim()) {
-      if (!base_path.startsWith("/"))
-        throw new Error('Base Path Must Start With A Slash "/" ');
-
-      this._base_path = base_path;
-    } else this._base_path = "";
-
-    this._base_url = API_BASE_URL; // from env
-
-    this._headers = { ...createDefaultHeaders(), ...base_headers };
-  }
-
-  private checkUrl(_url: string | undefined | null) {
-    if (!this._base_url && !_url?.trim()) {
-      // if no base url was specified and no url is specified too, throws error
-      throw new Error("REQUEST URL NOT SPECIFIED");
+    const _options = {
+      api_base_url,
+      api_base_headers,
+      base_before_req_headers,
+      base_url: "",
+      base_headers: {} as HeadersInit,
+      before_req_headers: undefined as (() => HeadersInit) | undefined,
     }
 
-    return this._base_url + this._base_path + _url?.trim(); // if no base url is provided, then only the url passed by the user will be used.
-  }
+    async function requestWithoutBody<T>(
+      _url: string,
+      method: HttpMethods = "GET",
+      _headers: Headers = {},
+    ): Promise<T> {
+      if (!_req_url && !isValidUrl(_url))
+        throw new Error("Invalid request URL, no api_base_url nor base_url was provided and url is not a valid URL");
 
-  private async requestWithoutBody<T>(
-    _url: string,
-    method: HttpMethods = "GET",
-    _headers: Headers = {},
-  ): Promise<T> {
-    const url = this.checkUrl(_url);
+      const url = _req_url + _url.trim();
 
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: {
-          ...this._headers,
-          ..._headers,
-        },
-      });
+      if (!isValidUrl(url))
+        throw new Error("Invalid Request URL");
 
-      if (!res.ok) {
-        throw new Error(res.statusText);
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: {
+            ..._req_headers,
+            ..._headers,
+            ...mountBothBeforeRequestHeaders(base_before_req_headers, _before_req_headers),
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error(res.statusText);
+        }
+
+        return res.json() as Promise<T>;
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    async function requestWithBody<T>(
+      _url: string,
+      _body: object,
+      method: HttpMethods = "POST",
+      _headers: Headers = {},
+    ): Promise<T> {
+      if (!_req_url && !isValidUrl(_url))
+        throw new Error("Invalid request URL, no api_base_url nor base_url was provided and url is not a valid URL");
+
+      const url = _req_url + _url.trim();
+
+      if (!isValidUrl(url))
+        throw new Error("Invalid Request URL");
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: {
+            ..._req_headers,
+            ..._headers,
+            ...mountBothBeforeRequestHeaders(base_before_req_headers, _before_req_headers),
+          },
+          body: JSON.stringify(_body),
+        });
+
+        if (!res.ok) {
+          throw new Error(res.statusText);
+        }
+
+        return res.json() as Promise<T>;
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    return class HTTP_CLIENT {
+      /**
+       * @constructor creates an instance of HTTP_CLIENT 👷🏾‍♂️ 🛠️ 🚧
+       * @param {Object} options;
+       * @param {string} options.base_url optional url to act as origin for all requests of an HTTP_CLIENT instance
+       * @param {HeadersInit} options.base_headers optionally set"s default headers
+       * @param {(() => HeadersInit) | undefined} options.before_req_headers before each request, the header object returned by this function is set as a header, giving a more dynamic experience than that of the __base_header__ options
+       * @example new HTTP_CLIENt({
+       *  before_req_headers: () => ({ "Authorization": `bearer ${localStorage.get("token")}` }) })
+       */
+      constructor({
+        base_url = "",
+        base_headers = {},
+        before_req_headers,
+      }: {
+        base_url?: string,
+        base_headers?: HeadersInit
+        before_req_headers?: () => HeadersInit;
+      } = {}) {
+
+        if (api_base_url && base_url && !isValidUrl(api_base_url + base_url))
+          throw new Error("Invalid base URL: API URL was already specified");
+
+        if (!api_base_url && base_url && !isValidUrl(base_url))
+          throw new Error("Invalid Base URL Specified");
+
+        const url = String(api_base_url).trim() + String(base_url).trim();
+
+        if (url && !isValidUrl(url))
+          throw new Error("Invalid request URL");
+
+        _req_url = url;
+
+        if (!isEmptyObject(api_base_headers)) _req_headers = { ...api_base_headers };
+
+        if (!isEmptyObject(base_headers)) _req_headers = { ..._req_headers, ...base_headers };
+
+        _before_req_headers = before_req_headers;
+
+        _options.before_req_headers = before_req_headers;
+        _options.base_url = base_url;
+        _options.base_headers = base_headers;
       }
 
-      return res.json() as Promise<T>;
-    } catch (error) {
-      throw new Error(this._base_url);
+      /**
+       * returns all options both from provider and class instantiation ✅
+       *
+       * @example console.log(new HTTP_CLIENT().Options) // logs _base_url {string} url
+       */
+      get options() {
+        return { ..._options };
+      }
+
+      // EXPOSED HANDLERS 🪖 👷🏾‍♂️
+
+      /**
+       * 🪖 👷🏾‍♂️ handles all GET queries to specified url
+       *
+       * @param {string} url optional, but required if no base url was provided
+       * @param {Headers} headers optional
+       */
+      public async GET<T>(url: string = "", headers?: Headers): Promise<T> {
+        return requestWithoutBody<T>(url, "GET", headers);
+      }
+
+      /**
+       * 🪖👷🏾‍♂️ handles all POST mutations to specified url
+       *
+       * @param {string} url optional, but required if no base url was specified at initialization
+       * @param {BodyInit} body required. Use "{}" as placeholder to bypass any error telling you to specify a body for mutations that do not need a body object
+       * @param {Headers} headers optional
+       */
+      public async POST<T>(
+        url: string = "",
+        body: object,
+        headers?: Headers,
+      ): Promise<T> {
+        return requestWithBody(url, body, "POST", headers);
+      }
+
+      /**
+       * 🪖 👷🏾‍♂️ handles all PUT mutations to specified url
+       *
+       * @param {string} url optional, but required if no base url was specified at initialization
+       * @param {BodyInit} body required. Use "{}" as placeholder to bypass any error telling you to specify a body for mutations that do not need a body object
+       * @param {Headers} headers optional
+       */
+      public async PUT<T>(
+        url: string = "",
+        body: object,
+        headers?: Headers,
+      ): Promise<T> {
+        return requestWithBody(url, body, "PUT", headers);
+      }
+
+      /**
+       * 🪖 👷🏾‍♂️ handles all PATCH mutations to specified url
+       *
+       * @param {string} url optional, but required if no base url was specified at initialization
+       * @param {BodyInit} body required. Use "{}" as placeholder to bypass any error telling you to specify a body for mutations that do not need a body object
+       * @param {Headers} headers optional
+       */
+      public async PATCH<T>(
+        url: string = "",
+        body: object,
+        headers?: Headers,
+      ): Promise<T> {
+        return requestWithBody(url, body, "PATCH", headers);
+      }
+
+      /**
+       * 🪖 👷🏾‍♂️ handles all DELETE queries to specified url
+       *
+       * @param {string} url optional, but required if no base url was provided
+       * @param {Headers} headers optional
+       */
+      public async DELETE<T>(url: string = "", headers?: Headers): Promise<T> {
+        return requestWithoutBody(url, "DELETE", headers);
+      }
     }
-  }
-
-  private async requestWithBody<T>(
-    _url: string,
-    _body: object,
-    method: HttpMethods = "POST",
-    _headers: Headers = {},
-  ): Promise<T> {
-    const url = this.checkUrl(_url);
-
-    const res = await fetch(url, {
-      method,
-      headers: {
-        ...this._headers,
-        ..._headers,
-      },
-      body: JSON.stringify(_body),
-    });
-
-    if (!res.ok) {
-      throw new Error(res.statusText);
-    }
-
-    return res.json() as Promise<T>;
-  }
-
-  // GETTERS AND SETTERS
-
-  /**
-   * getter method to access base url. It is accessed as though it is a property ✅
-   *
-   * @example console.log(new HTTP_CLIENT().getBaseUrl) // logs _base_url {string} url
-   */
-  get getBaseUrl() {
-    return this._base_url;
-  }
-
-  /**
-   * getter method to access base path. It is accessed as though it is a property ✅
-   *
-   * @example console.log(new HTTP_CLIENT().getBasePath() // logs _base_path {string} url
-   */
-  get getBasePath() {
-    return this._base_path;
-  }
-
-  /**
-   * setter method to reassign base url (origin). It is accessed as though it is a property ✅
-   *
-   * @example new HTTP_CLIENT().setBaseUrl = "https://example.com" // updates the _base_url (origin)
-   */
-  set setBaseUrl(new_base_url: string) {
-    const url = new URL(new_base_url);
-
-    if (!url.protocol) throw new Error("Will Not Assign An Invalid URL");
-
-    this._base_url = url.toString().slice(0, -1);
-  }
-
-  // EXPOSED HANDLERS 🪖 👷🏾‍♂️
-
-  /**
-   * 🪖 👷🏾‍♂️ handles all GET queries to specified url
-   *
-   * @param {string} url optional, but required if no base url was provided
-   * @param {Headers} headers optional
-   */
-  public async GET<T>(url: string = "", headers?: Headers): Promise<T> {
-    return this.requestWithoutBody<T>(url, "GET", headers);
-  }
-
-  /**
-   * 🪖👷🏾‍♂️ handles all POST mutations to specified url
-   *
-   * @param {string} url optional, but required if no base url was specified at initialization
-   * @param {BodyInit} body required. Use "{}" as placeholder to bypass any error telling you to specify a body for mutations that do not need a body object
-   * @param {Headers} headers optional
-   */
-  public async POST<T>(
-    url: string = "",
-    body: object,
-    headers?: Headers,
-  ): Promise<T> {
-    return this.requestWithBody(url, body, "POST", headers);
-  }
-
-  /**
-   * 🪖 👷🏾‍♂️ handles all PUT mutations to specified url
-   *
-   * @param {string} url optional, but required if no base url was specified at initialization
-   * @param {BodyInit} body required. Use "{}" as placeholder to bypass any error telling you to specify a body for mutations that do not need a body object
-   * @param {Headers} headers optional
-   */
-  public async PUT<T>(
-    url: string = "",
-    body: object,
-    headers?: Headers,
-  ): Promise<T> {
-    return this.requestWithBody(url, body, "PUT", headers);
-  }
-
-  /**
-   * 🪖 👷🏾‍♂️ handles all PATCH mutations to specified url
-   *
-   * @param {string} url optional, but required if no base url was specified at initialization
-   * @param {BodyInit} body required. Use "{}" as placeholder to bypass any error telling you to specify a body for mutations that do not need a body object
-   * @param {Headers} headers optional
-   */
-  public async PATCH<T>(
-    url: string = "",
-    body: object,
-    headers?: Headers,
-  ): Promise<T> {
-    return this.requestWithBody(url, body, "PATCH", headers);
-  }
-
-  /**
-   * 🪖 👷🏾‍♂️ handles all DELETE queries to specified url
-   *
-   * @param {string} url optional, but required if no base url was provided
-   * @param {Headers} headers optional
-   */
-  public async DELETE<T>(url: string = "", headers?: Headers): Promise<T> {
-    return this.requestWithoutBody(url, "DELETE", headers);
-  }
+  })();
 }
+
+const HTTP_CLIENT = HttpClientProvider();
+
+export {
+  HttpClientProvider,
+  HTTP_CLIENT,
+};

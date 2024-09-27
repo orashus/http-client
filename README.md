@@ -9,6 +9,7 @@ __table of content__
 
 - [installation](#installation)
 - [how to use](#how-to-use)
+- [options object](#options-object)
 
 ## Installation
 
@@ -31,7 +32,11 @@ To install run
   - choose between `local` for localStorage and `session` for sessionStorage
 
 ```ts
-  import { HTTP_CLIENT } from "@orashus/client-storage";
+  import { HTTP_CLIENT } from "@orashus/http-client";
 
-  const const httpClient = new HTTP_CLIENT("/auth");
+  const httpClient = new HTTP_CLIENT("/auth");
 ```
+
+## Options Object
+
+The following are optional `options` arguments properties that the `HTTP_CLIENT   class takes and their uses

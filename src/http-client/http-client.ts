@@ -6,10 +6,10 @@ import {
 } from "./utils/utils";
 
 /**
- * @author RashJrEdmund 🥷🏽
+ * @author Orashus 🥷🏽
  * @param {Object?} options
  * @param {string?} options.api_base_url optional url to act as origin for all requests of the HTTP_CLIENT instance
- * @param {HeadersInit} options.api_base_headers optionally set"s default headers
+ * @param {HeadersInit} options.api_base_headers optional. set's default headers
  * @param {(() => HeadersInit) | undefined} options.base_before_req_headers before each request, the header object returned by this function is set as a header, giving a more dynamic experience than that of the __base_header__ options
  * 
  * @returns HTTP_CLIENT instance
@@ -116,7 +116,7 @@ function HttpClientProvider({
        * @constructor creates an instance of HTTP_CLIENT 👷🏾‍♂️ 🛠️ 🚧
        * @param {Object} options;
        * @param {string} options.base_url optional url to act as origin for all requests of an HTTP_CLIENT instance
-       * @param {HeadersInit} options.base_headers optionally set"s default headers
+       * @param {HeadersInit} options.base_headers optional, set's default headers for the scope of it's instance
        * @param {(() => HeadersInit) | undefined} options.before_req_headers before each request, the header object returned by this function is set as a header, giving a more dynamic experience than that of the __base_header__ options
        * @example new HTTP_CLIENt({
        *  before_req_headers: () => ({ "Authorization": `bearer ${localStorage.get("token")}` }) })
@@ -234,9 +234,9 @@ function HttpClientProvider({
   })();
 }
 
-const HTTP_CLIENT = HttpClientProvider();
+const HttpClient = HttpClientProvider();
 
 export {
   HttpClientProvider,
-  HTTP_CLIENT,
+  HttpClient,
 };

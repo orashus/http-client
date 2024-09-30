@@ -31,8 +31,31 @@ const mountBothBeforeRequestHeaders = <T = () => HeadersInit>(base_before_req_he
   return results;
 };
 
+const buildUrl = (url: string | string[], prependWithSlash: boolean = true) => {
+  if (!url.length) return "";
+
+  if (typeof url === "string") return url.trim();
+
+  const res = url.map((str, i) => {
+    let val = str.trim();
+
+    if (str.startsWith("/")) {
+      val = str.slice(1, str.length);
+    }
+
+    if (str.endsWith("/") && i !== url.length - 1) {
+      val = val.slice(0, -1);
+    }
+
+    return val;
+  }).join("/");
+
+  return prependWithSlash ? "/" + res : res;
+}
+
 export {
   isValidUrl,
   isEmptyObject,
-  mountBothBeforeRequestHeaders
+  mountBothBeforeRequestHeaders,
+  buildUrl
 };

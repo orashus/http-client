@@ -1,13 +1,12 @@
-# Welcome to `@orashus/http-client` pkg
+<h1 align="center" >Welcome to <code>@orashus/http-client</code></h1>
 
-|
+<div align="center">
+  <img src="https://github.com/orashus/http-client/blob/main/assets/http-client-logo.png?raw=true" />
+</div>
+
 ___
 
-![http client logo"](https://github.com/orashus/http-client/blob/main/assets/http-client-logo.png?raw=true)
-
-___
-
-[![current version]( https://img.shields.io/badge/@latest-v0.0.1-gold)](https://www.npmjs.com/package/@orashus/http-client)
+[![current version]( https://img.shields.io/badge/@latest-v0.0.5-gold)](https://www.npmjs.com/package/@orashus/http-client)
 [![author RashJrEdmund]( https://img.shields.io/badge/Author-RashJrEdmund-blue)](https://github.com/rashjredmund)
 
 A lightweight http-client built on top of the JavaScript Fetch API
@@ -50,7 +49,10 @@ To install run
           "x-some-api-key": "that api key value",
         },
         before_req_headers: () => {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
+          // returned object is added to the headers of each request using this class
+          return {
+           "Authorization": `Bearer ${localStorage.getItem("token")}`
+         }
         }
       });
     ```
@@ -66,12 +68,15 @@ To install run
           "x-some-api-key": "that api key value",
         },
         base_before_req_headers: () => {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
+          // returned object is added to the headers of each request using this class
+          return {
+           "Authorization": `Bearer ${localStorage.getItem("token")}`
+         }
         }
       });
 
       const authHC = new HttpClient({
-        base_url: "/auth",
+        base_url: "/auth", // simply ["auth"]
       });
 
       // use like so
@@ -90,13 +95,19 @@ To install run
 
 ## Options Object
 
+_It is also important to note that all url like options can be both of type string or an array of string_. Example:
+  
+- `/users/${id}` <-> `["users", id]`
+
+- `/auth/login` <-> `["auth", "login"]`
+
 The following are all `options` arguments properties that the both the `HttpClientProvider` & the `HttpClient` class takes.
 
 - `HttpClientProvider`
 
   ```ts
     {
-      api_base_url?: string = "",
+      api_base_url?: string | string[] = "",
       api_base_headers?:HeadersInit = {},
       base_before_req_headers?: () => HeadersInit,
     }
@@ -106,7 +117,7 @@ The following are all `options` arguments properties that the both the `HttpClie
 
   ```ts
     {
-      base_url?: string = "",
+      base_url?: string | string[] = "",
       base_headers?: HeadersInit = {},
       before_req_headers?: () => HeadersInit,
     }
